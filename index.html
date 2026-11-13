@@ -1,0 +1,447 @@
+<!DOCTYPE html>
+<html lang="de" class="light">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>EKG-Trainer Pro – Feuerwehr Stolberg (Rettungsdienst)</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script>
+    tailwind.config = {
+      darkMode: 'class',
+      theme: {
+        extend: {
+          colors: {
+            stolbergred: '#C8102E', // Feuerwehr-Karminrot (RAL 3000)
+            stolbergcopper: '#B87333', // Kupferstadt-Akzent
+            emsdark: '#0F172A',
+          }
+        }
+      }
+    };
+  </script>
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;600;700&display=swap');
+    body { font-family: 'Inter', sans-serif; }
+    .font-mono-tech { font-family: 'JetBrains Mono', monospace; }
+    
+    #ekg-ruler {
+      cursor: grab;
+      user-select: none;
+      touch-action: none;
+    }
+    #ekg-ruler:active { cursor: grabbing; }
+    
+    ::-webkit-scrollbar { width: 8px; height: 8px; }
+    ::-webkit-scrollbar-track { background: transparent; }
+    ::-webkit-scrollbar-thumb { background: #94a3b8; border-radius: 4px; }
+  </style>
+</head>
+<body class="bg-slate-50 text-slate-900 dark:bg-slate-950 dark:text-slate-100 min-h-screen flex flex-col transition-colors duration-200">
+
+  <!-- TOP NAVIGATION -->
+  <header class="sticky top-0 z-40 bg-white/90 dark:bg-slate-900/90 backdrop-blur border-b border-slate-200 dark:border-slate-800">
+    <div class="max-w-7xl mx-auto px-4 py-3 flex flex-wrap items-center justify-between gap-3">
+      <div class="flex items-center gap-3 cursor-pointer" onclick="goHome()">
+        <div class="w-10 h-10 rounded-xl bg-stolbergred flex items-center justify-center text-white shadow-md shadow-stolbergred/20 relative overflow-hidden border border-amber-600/50">
+          <svg class="w-6 h-6" fill="none" stroke="currentColor" stroke-width="2.2" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M3 12h4l3-9 4 18 3-9h4" />
+          </svg>
+        </div>
+        <div>
+          <div class="flex items-center gap-2">
+            <span class="font-extrabold text-lg tracking-tight">Feuerwehr Stolberg <span class="text-stolbergred">RettDst</span></span>
+            <span class="text-[10px] font-bold px-2 py-0.5 rounded-full bg-amber-500/10 text-amber-700 dark:text-amber-400 border border-amber-500/30">Kupferstadt</span>
+          </div>
+          <p class="text-xs text-slate-500 dark:text-slate-400">EKG-Trainer Pro • Einthoven & Brustwand (Standard & Exoten)</p>
+        </div>
+      </div>
+
+      <div class="flex flex-wrap items-center gap-2">
+        <button onclick="openModal('modal-cloud')" id="cloud-status-btn" class="text-xs font-medium px-3 py-1.5 rounded-lg border border-slate-200 dark:border-slate-700 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 flex items-center gap-1.5 transition">
+          <span id="cloud-dot" class="w-2 h-2 rounded-full bg-amber-500"></span>
+          <span id="cloud-label">Offline-Modus</span>
+        </button>
+
+        <button onclick="openAdminModal()" class="text-xs font-semibold px-3 py-1.5 rounded-lg bg-stolbergred text-white hover:opacity-90 flex items-center gap-1.5 transition shadow-sm">
+          <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
+          </svg>
+          <span>Admin-Dashboard</span>
+        </button>
+
+        <button onclick="openModal('modal-hosting')" class="text-xs font-medium px-3 py-1.5 rounded-lg border border-blue-200 dark:border-blue-800 bg-blue-50 dark:bg-blue-950/50 text-blue-700 dark:text-blue-300 hover:bg-blue-100 transition">
+          Online stellen
+        </button>
+
+        <button onclick="toggleDarkMode()" title="Design wechseln" class="p-2 rounded-lg border border-slate-200 dark:border-slate-700 hover:bg-slate-100 dark:hover:bg-slate-800 transition">
+          <svg id="icon-sun" class="w-4 h-4 hidden dark:block text-amber-400" fill="currentColor" viewBox="0 0 20 20"><path d="M10 2a1 1 0 011 1v1a1 1 0 11-2 0V3a1 1 0 011-1zm4 8a4 4 0 11-8 0 4 4 0 018 0zm-.464 4.95l.707.707a1 1 0 001.414-1.414l-.707-.707a1 1 0 00-1.414 1.414zm2.12-10.607a1 1 0 010 1.414l-.706.707a1 1 0 11-1.414-1.414l.707-.707a1 1 0 011.414 0zM17 11a1 1 0 100-2h-1a1 1 0 100 2h1zm-7 4a1 1 0 011 1v1a1 1 0 11-2 0v-1a1 1 0 011-1zM5.05 6.464A1 1 0 106.465 5.05l-.708-.707a1 1 0 00-1.414 1.414l.707.707zm1.414 8.486l-.707.707a1 1 0 01-1.414-1.414l.707-.707a1 1 0 011.414 1.414zM4 11a1 1 0 100-2H3a1 1 0 000 2h1z"/></svg>
+          <svg id="icon-moon" class="w-4 h-4 block dark:hidden text-slate-700" fill="currentColor" viewBox="0 0 20 20"><path d="M17.293 13.293A8 8 0 016.707 2.707a8.001 8.001 0 1010.586 10.586z"/></svg>
+        </button>
+      </div>
+    </div>
+  </header>
+
+  <!-- MAIN CONTAINER -->
+  <main class="flex-1 max-w-7xl w-full mx-auto px-4 py-6">
+
+    <!-- VIEW 1: STARTSEITE -->
+    <section id="view-home" class="space-y-8">
+      <div class="bg-white dark:bg-slate-900 rounded-2xl p-6 md:p-8 border border-slate-200 dark:border-slate-800 shadow-sm relative overflow-hidden">
+        <div class="absolute top-0 right-0 w-48 h-48 bg-stolbergred/5 rounded-full blur-3xl pointer-events-none"></div>
+        <div class="max-w-3xl relative z-10">
+          <span class="inline-flex items-center gap-1.5 text-xs font-bold uppercase tracking-wider text-stolbergred dark:text-red-400 bg-red-50 dark:bg-red-950/50 px-3 py-1 rounded-full mb-3">
+            Feuerwehr Stolberg • Rettungsdienst Städteregion Aachen (SAA & BPR 2025/2026)
+          </span>
+          <h1 class="text-2xl md:text-4xl font-extrabold tracking-tight mb-3">
+            Interaktives 12-Kanal-EKG-Training (Standard & Exoten)
+          </h1>
+          <p class="text-slate-600 dark:text-slate-300 text-sm md:text-base leading-relaxed">
+            Trainiere die präzise Befundung von Standard-Notfällen bis hin zu seltenen, klinisch hochrelevanten <strong>exotischen EKG-Mustern</strong> (wie Brugada, Wellens, De Winter und S1Q3T3). Sofort startklar ohne Anmeldung – mit echtem Millimeterpapier, EKG-Lineal und gestuften Pathophysiologie-Erklärungen.
+          </p>
+        </div>
+
+        <div class="mt-6 pt-6 border-t border-slate-200 dark:border-slate-800 flex flex-wrap items-center justify-between gap-4">
+          <div class="flex flex-wrap items-center gap-2">
+            <span class="text-xs font-semibold text-slate-500 uppercase">Datenquelle:</span>
+            <select id="source-filter" onchange="updateCaseCounts()" class="text-xs font-medium rounded-lg border border-slate-300 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 px-3 py-1.5">
+              <option value="all">Alle Fälle (Standard + Exoten + Cloud)</option>
+              <option value="builtin">Nur integrierte Fälle (14)</option>
+              <option value="cloud">Nur eigene / Cloud-Fälle</option>
+            </select>
+          </div>
+          <div class="flex items-center gap-2">
+            <button onclick="exportCasesJSON()" class="text-xs font-medium px-3 py-1.5 rounded-lg border border-slate-300 dark:border-slate-700 hover:bg-slate-100 transition">JSON Export</button>
+            <label class="text-xs font-medium px-3 py-1.5 rounded-lg border border-slate-300 dark:border-slate-700 hover:bg-slate-100 transition cursor-pointer">
+              JSON Import
+              <input type="file" accept=".json" onchange="importCasesJSON(event)" class="hidden" />
+            </label>
+          </div>
+        </div>
+      </div>
+
+      <!-- LEVEL CARDS -->
+      <div class="grid md:grid-cols-2 gap-6">
+        <div class="bg-white dark:bg-slate-900 rounded-2xl p-6 border-2 border-emerald-500/30 hover:border-emerald-500 transition shadow-sm flex flex-col justify-between">
+          <div>
+            <div class="flex items-center justify-between mb-4">
+              <span class="px-3 py-1 rounded-full text-xs font-bold bg-emerald-100 dark:bg-emerald-950 text-emerald-700 dark:text-emerald-300">LEVEL 1 • BASISWISSEN</span>
+              <span id="count-rs" class="text-xs font-mono-tech font-semibold text-slate-500">0 Fälle</span>
+            </div>
+            <h2 class="text-xl font-bold mb-2">Rettungssanitäter (RettSan)</h2>
+            <p class="text-sm text-slate-600 dark:text-slate-400 mb-4">
+              Grundrhythmen, Frequenzbestimmung, Reanimationsrhythmen (VF/Asystolie) sowie elementare Blickdiagnosen für den Regelrettungsdienst.
+            </p>
+          </div>
+          <button onclick="startQuiz('RS')" class="w-full py-3 px-4 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-sm shadow-md transition">
+            RettSan-Training starten →
+          </button>
+        </div>
+
+        <div class="bg-white dark:bg-slate-900 rounded-2xl p-6 border-2 border-stolbergred/40 hover:border-stolbergred transition shadow-sm flex flex-col justify-between">
+          <div>
+            <div class="flex items-center justify-between mb-4">
+              <span class="px-3 py-1 rounded-full text-xs font-bold bg-red-100 dark:bg-red-950 text-stolbergred dark:text-red-300">LEVEL 2 • VERTIEFTE & EXOTISCHE DIAGNOSTIK</span>
+              <span id="count-notsan" class="text-xs font-mono-tech font-semibold text-slate-500">0 Fälle</span>
+            </div>
+            <h2 class="text-xl font-bold mb-2">Notfallsanitäter (NotSan & Exoten)</h2>
+            <p class="text-sm text-slate-600 dark:text-slate-400 mb-4">
+              12-Kanal-Analyse von Vorder-/Hinterwand-STEMI, AV-Blöcken, VT, LSB, Hyperkaliämie sowie <strong>exotischen Mustern</strong> wie Brugada, Wellens, De Winter und Lungenembolie (S1Q3T3).
+            </p>
+          </div>
+          <button onclick="startQuiz('NotSan')" class="w-full py-3 px-4 rounded-xl bg-stolbergred hover:bg-red-700 text-white font-bold text-sm shadow-md transition">
+            NotSan & Exoten-Training starten →
+          </button>
+        </div>
+      </div>
+
+      <!-- FACHLITERATUR -->
+      <div class="bg-white dark:bg-slate-900 rounded-2xl p-6 border border-slate-200 dark:border-slate-800">
+        <div class="flex items-center justify-between mb-4">
+          <div>
+            <h3 class="font-bold text-base">Hinterlegte Fachliteratur & SAA-Standards</h3>
+            <p class="text-xs text-slate-500">Referenzwerke & Leitlinien für Standard & Exoten</p>
+          </div>
+          <button onclick="openAdminModal()" class="text-xs font-semibold text-stolbergred hover:underline">+ Literatur im Admin-Bereich verwalten</button>
+        </div>
+        <div id="home-literature-list" class="grid sm:grid-cols-2 lg:grid-cols-3 gap-3"></div>
+      </div>
+    </section>
+
+    <!-- VIEW 2: QUIZ & EKG MONITOR -->
+    <section id="view-quiz" class="hidden space-y-5">
+      <div class="bg-white dark:bg-slate-900 rounded-xl p-4 border border-slate-200 dark:border-slate-800 flex flex-wrap items-center justify-between gap-3">
+        <div class="flex items-center gap-3">
+          <button onclick="goHome()" class="text-xs font-semibold px-3 py-1.5 rounded-lg bg-slate-100 dark:bg-slate-800 hover:bg-slate-200">← Beenden</button>
+          <div>
+            <span id="quiz-level-badge" class="text-xs font-bold px-2.5 py-0.5 rounded-full bg-red-100 text-stolbergred">Level</span>
+            <span id="quiz-progress-text" class="text-xs font-mono-tech font-semibold text-slate-500 ml-2">Fall 1 / 5</span>
+          </div>
+        </div>
+
+        <div class="flex items-center gap-3">
+          <span id="quiz-score-badge" class="text-xs font-mono-tech font-bold px-3 py-1 rounded-lg bg-slate-100 dark:bg-slate-800">Punkte: 0</span>
+          <button onclick="toggleRuler()" id="btn-ruler" class="text-xs font-semibold px-3 py-1.5 rounded-lg border border-amber-400 bg-amber-50 dark:bg-amber-950/50 text-amber-800 dark:text-amber-200 hover:bg-amber-100 transition flex items-center gap-1.5">
+            📏 EKG-Lineal
+          </button>
+        </div>
+      </div>
+
+      <div class="bg-white dark:bg-slate-900 rounded-xl p-4 border-l-4 border-stolbergred border-y border-r border-slate-200 dark:border-slate-800">
+        <div class="text-xs font-bold uppercase tracking-wider text-slate-400 mb-1">Einsatzmeldung / Klinischer Kontext</div>
+        <p id="quiz-clinical-context" class="text-sm md:text-base font-medium"></p>
+      </div>
+
+      <!-- 12-KANAL EKG MONITOR -->
+      <div class="relative bg-white dark:bg-slate-900 rounded-2xl border border-slate-300 dark:border-slate-700 shadow-md overflow-hidden">
+        <div class="px-4 py-2 bg-slate-100 dark:bg-slate-800 border-b border-slate-200 dark:border-slate-700 flex flex-wrap items-center justify-between gap-2 text-xs font-mono-tech">
+          <span class="font-bold text-slate-700 dark:text-slate-200">12-KANAL-STANDARD-EKG • Oben: Einthoven/Goldberger (I–aVF) | Unten: Brustwand (V1–V6)</span>
+          <span class="text-slate-500">Vorschub: 25 mm/s • Amplitude: 10 mm/mV</span>
+        </div>
+
+        <div id="ekg-viewport" class="relative w-full overflow-x-auto bg-[#fff5f5] dark:bg-[#1a1114]">
+          <canvas id="ekg-canvas" width="1200" height="580" class="w-full h-auto block"></canvas>
+          <img id="ekg-uploaded-img" src="" alt="12-Kanal-EKG" class="hidden w-full max-h-[620px] object-contain mx-auto" />
+
+          <!-- EKG-Messlineal -->
+          <div id="ekg-ruler" class="hidden absolute top-6 left-10 w-64 h-44 bg-amber-300/25 border-2 border-amber-500 rounded-lg backdrop-blur-[1px] p-2 shadow-lg">
+            <div class="flex items-center justify-between text-[10px] font-mono-tech font-bold text-amber-950 dark:text-amber-100 bg-amber-400/80 px-2 py-0.5 rounded">
+              <span>EKG-MESSFENSTER</span>
+              <button onclick="toggleRuler()" class="text-xs leading-none">✕</button>
+            </div>
+            <div class="mt-2 grid grid-cols-5 h-24 border-x-2 border-stolbergred relative">
+              <div class="border-r border-amber-600/50"></div><div class="border-r border-amber-600/50"></div><div class="border-r border-amber-600/50"></div><div class="border-r border-amber-600/50"></div><div></div>
+              <span class="absolute -bottom-5 left-0 text-[10px] font-mono-tech font-bold bg-white/90 px-1 rounded">0 ms</span>
+              <span class="absolute -bottom-5 right-0 text-[10px] font-mono-tech font-bold bg-white/90 px-1 rounded">1000 ms</span>
+            </div>
+            <p class="mt-6 text-[10px] font-mono-tech text-slate-800 dark:text-slate-100 font-semibold">1 Kleinkästchen = 40 ms | 1 Großkästchen = 200 ms</p>
+          </div>
+        </div>
+      </div>
+
+      <div class="bg-white dark:bg-slate-900 rounded-2xl p-5 border border-slate-200 dark:border-slate-800">
+        <h3 class="font-bold text-sm md:text-base mb-3">Wie lautet deine EKG-Interpretation?</h3>
+        <div id="quiz-options" class="grid md:grid-cols-2 gap-3"></div>
+      </div>
+
+      <!-- AUSWERTUNG -->
+      <div id="quiz-feedback" class="hidden bg-white dark:bg-slate-900 rounded-2xl p-6 border-2 border-slate-300 dark:border-slate-700 shadow-lg space-y-5">
+        <div class="flex flex-wrap items-center justify-between gap-3 pb-4 border-b border-slate-200 dark:border-slate-800">
+          <div class="flex items-center gap-3">
+            <div id="feedback-icon" class="w-10 h-10 rounded-full flex items-center justify-center font-bold text-lg"></div>
+            <div>
+              <h4 id="feedback-headline" class="font-extrabold text-lg"></h4>
+              <p id="feedback-subline" class="text-xs text-slate-500"></p>
+            </div>
+          </div>
+
+          <div class="flex items-center gap-1 bg-slate-100 dark:bg-slate-800 p-1 rounded-xl">
+            <button onclick="switchExplanationDepth('RS')" id="tab-depth-rs" class="text-xs font-bold px-3 py-1.5 rounded-lg transition">RettSan (Basis)</button>
+            <button onclick="switchExplanationDepth('NotSan')" id="tab-depth-notsan" class="text-xs font-bold px-3 py-1.5 rounded-lg transition">NotSan (Vertiefung)</button>
+          </div>
+        </div>
+
+        <div class="grid md:grid-cols-3 gap-4">
+          <div class="p-4 rounded-xl bg-slate-50 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-700">
+            <div class="text-xs font-bold uppercase text-blue-600 dark:text-blue-400 mb-1.5">1. EKG-Kriterien</div>
+            <p id="exp-criteria" class="text-sm leading-relaxed"></p>
+          </div>
+          <div class="p-4 rounded-xl bg-slate-50 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-700">
+            <div class="text-xs font-bold uppercase text-purple-600 dark:text-purple-400 mb-1.5">2. Pathophysiologie</div>
+            <p id="exp-patho" class="text-sm leading-relaxed"></p>
+          </div>
+          <div class="p-4 rounded-xl bg-slate-50 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-700">
+            <div class="text-xs font-bold uppercase text-stolbergred dark:text-red-400 mb-1.5">3. Rettungsdienst-Maßnahmen</div>
+            <p id="exp-ems" class="text-sm leading-relaxed"></p>
+          </div>
+        </div>
+
+        <div class="p-4 rounded-xl bg-blue-50/70 dark:bg-blue-950/30 border border-blue-200 dark:border-blue-900 flex flex-wrap items-center justify-between gap-3">
+          <div class="text-xs">
+            <span class="font-bold text-blue-900 dark:text-blue-200">📚 Fachliteratur:</span>
+            <span id="exp-literature" class="text-blue-800 dark:text-blue-300 ml-1"></span>
+          </div>
+          <a id="btn-live-pubmed" href="#" target="_blank" rel="noopener noreferrer" class="text-xs font-semibold px-3 py-1.5 rounded-lg bg-white dark:bg-slate-800 border border-blue-300 text-blue-700 hover:bg-blue-50 transition">
+            🔍 Leitlinien / PubMed prüfen ↗
+          </a>
+        </div>
+
+        <div class="flex justify-end">
+          <button onclick="nextQuestion()" class="px-6 py-3 rounded-xl bg-slate-900 dark:bg-white text-white dark:text-slate-900 font-bold text-sm hover:opacity-90 transition">Nächstes EKG →</button>
+        </div>
+      </div>
+    </section>
+
+    <!-- VIEW 3: SUMMARY -->
+    <section id="view-summary" class="hidden max-w-2xl mx-auto bg-white dark:bg-slate-900 rounded-2xl p-8 border border-slate-200 dark:border-slate-800 text-center space-y-6">
+      <div class="w-16 h-16 rounded-2xl bg-red-100 dark:bg-red-950 text-stolbergred mx-auto flex items-center justify-center text-3xl font-extrabold">✓</div>
+      <div>
+        <h2 class="text-2xl font-extrabold">Trainingseinheit abgeschlossen!</h2>
+        <p id="summary-text" class="text-slate-600 dark:text-slate-400 mt-2"></p>
+      </div>
+      <div id="summary-stats" class="grid grid-cols-3 gap-4 py-4 border-y border-slate-200 dark:border-slate-800"></div>
+      <div class="flex flex-wrap justify-center gap-3">
+        <button id="btn-retry-wrong" onclick="retryWrongCases()" class="hidden px-5 py-2.5 rounded-xl bg-amber-500 hover:bg-amber-600 text-white font-bold text-sm">Falsche Fälle wiederholen</button>
+        <button onclick="goHome()" class="px-5 py-2.5 rounded-xl bg-slate-900 dark:bg-white text-white dark:text-slate-900 font-bold text-sm">Zurück zur Level-Auswahl</button>
+      </div>
+    </section>
+  </main>
+
+  <!-- MODAL: ADMIN DASHBOARD (SECURED WITH SUPABASE AUTH) -->
+  <div id="modal-admin" class="hidden fixed inset-0 z-50 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4">
+    <div class="bg-white dark:bg-slate-900 rounded-2xl max-w-4xl w-full p-6 border border-slate-200 dark:border-slate-800 max-h-[92vh] overflow-y-auto space-y-5">
+      
+      <!-- Login Gate (Supabase Auth) -->
+      <div id="admin-login-gate" class="space-y-4 py-6 max-w-md mx-auto text-center">
+        <div class="w-12 h-12 rounded-full bg-stolbergred/10 text-stolbergred mx-auto flex items-center justify-center font-bold text-xl">🔒</div>
+        <h3 class="font-extrabold text-xl">Admin-Dashboard (Supabase Auth)</h3>
+        <p class="text-xs text-slate-500">Bitte melde dich mit deinem Administrator-Konto an, um geschützte EKG-Fälle und Fachliteratur zu verwalten.</p>
+        <form onsubmit="handleAdminLogin(event)" class="space-y-3 text-left">
+          <div>
+            <label class="block text-xs font-bold mb-1">Administrator E-Mail</label>
+            <input id="admin-email" required type="email" placeholder="admin@feuerwehr-stolberg.de" class="w-full text-xs p-3 rounded-lg border border-slate-300 dark:border-slate-700 bg-slate-50 dark:bg-slate-800" />
+          </div>
+          <div>
+            <label class="block text-xs font-bold mb-1">Passwort</label>
+            <input id="admin-password" required type="password" placeholder="••••••••••••" class="w-full text-xs p-3 rounded-lg border border-slate-300 dark:border-slate-700 bg-slate-50 dark:bg-slate-800" />
+          </div>
+          <div class="flex gap-2 pt-2">
+            <button type="submit" id="btn-login-submit" class="flex-1 py-3 rounded-lg bg-stolbergred text-white text-xs font-bold hover:bg-red-700 transition">Sicher einloggen</button>
+            <button type="button" onclick="closeModal('modal-admin')" class="px-4 py-3 rounded-lg border border-slate-300 dark:border-slate-700 text-xs font-medium">Abbrechen</button>
+          </div>
+        </form>
+      </div>
+
+      <!-- Admin Dashboard Content (Only visible when authenticated) -->
+      <div id="admin-dashboard-content" class="hidden space-y-5">
+        <div class="flex items-center justify-between border-b border-slate-200 dark:border-slate-800 pb-3">
+          <div class="flex items-center gap-3">
+            <h3 class="font-extrabold text-lg">Feuerwehr Stolberg – Admin Dashboard</h3>
+            <span class="text-xs px-2.5 py-0.5 rounded-full bg-emerald-100 text-emerald-800 font-semibold">Authentifiziert</span>
+          </div>
+          <div class="flex items-center gap-2">
+            <button onclick="handleAdminLogout()" class="text-xs font-semibold px-3 py-1.5 rounded-lg bg-slate-100 dark:bg-slate-800 hover:bg-slate-200">Abmelden</button>
+            <button onclick="closeModal('modal-admin')" class="text-slate-400 hover:text-slate-600 text-xl">✕</button>
+          </div>
+        </div>
+
+        <div class="flex gap-2 border-b border-slate-200 dark:border-slate-800 pb-2">
+          <button onclick="switchAdminTab('upload')" id="admin-tab-btn-upload" class="text-xs font-bold px-4 py-2 rounded-lg bg-stolbergred text-white">1. EKG / Exote einpflegen</button>
+          <button onclick="switchAdminTab('literature')" id="admin-tab-btn-literature" class="text-xs font-bold px-4 py-2 rounded-lg bg-slate-100 dark:bg-slate-800">2. Fachliteratur</button>
+        </div>
+
+        <!-- TAB 1: EKG UPLOAD -->
+        <form id="admin-tab-upload" onsubmit="handleNewEkgSubmit(event)" class="space-y-4">
+          <div class="grid sm:grid-cols-2 gap-4">
+            <div>
+              <label class="block text-xs font-bold mb-1">Ziel-Level *</label>
+              <select id="up-level" required class="w-full text-xs p-2.5 rounded-lg border border-slate-300 dark:border-slate-700 bg-slate-50 dark:bg-slate-800">
+                <option value="RS">Level 1 – RettSan (Basis)</option>
+                <option value="NotSan">Level 2 – NotSan & Exoten (Vertieft)</option>
+              </select>
+            </div>
+            <div>
+              <label class="block text-xs font-bold mb-1">Diagnose / Titel *</label>
+              <input id="up-title" required type="text" placeholder="z.B. Brugada-Syndrom Typ 1" class="w-full text-xs p-2.5 rounded-lg border border-slate-300 dark:border-slate-700 bg-slate-50 dark:bg-slate-800" />
+            </div>
+          </div>
+
+          <div>
+            <label class="block text-xs font-bold mb-1">Klinischer Kontext *</label>
+            <input id="up-context" required type="text" placeholder="z.B. Junger Patient mit familiärer Häufung von plötzlichem Herztod..." class="w-full text-xs p-2.5 rounded-lg border border-slate-300 dark:border-slate-700 bg-slate-50 dark:bg-slate-800" />
+          </div>
+
+          <div class="p-4 rounded-xl border border-dashed border-slate-300 dark:border-slate-700 space-y-3">
+            <div class="flex flex-wrap items-center justify-between gap-2">
+              <div>
+                <label class="block text-xs font-bold">12-Kanal-EKG-Bild (inkl. DSGVO-Schwärzung)</label>
+                <span class="text-[11px] text-slate-500">Maus gedrückt halten zum Schwärzen von Patientendaten.</span>
+              </div>
+              <input type="file" id="up-file" accept="image/*" required onchange="loadImageToRedactCanvas(event)" class="text-xs" />
+            </div>
+            <div id="redact-container" class="hidden space-y-2">
+              <div class="flex items-center justify-between">
+                <span class="text-[11px] font-semibold text-stolbergred">Schwärzungs-Modus aktiv</span>
+                <button type="button" onclick="resetRedactCanvas()" class="text-xs px-2 py-1 rounded bg-slate-200 dark:bg-slate-700">Zurücksetzen</button>
+              </div>
+              <canvas id="redact-canvas" class="max-h-64 w-auto border border-slate-400 rounded cursor-crosshair"></canvas>
+            </div>
+          </div>
+
+          <div class="grid sm:grid-cols-2 gap-3">
+            <div><label class="block text-xs font-bold mb-1">Antwort A *</label><input id="up-opt-0" required type="text" class="w-full text-xs p-2 rounded-lg border border-slate-300 dark:border-slate-700 bg-slate-50 dark:bg-slate-800" /></div>
+            <div><label class="block text-xs font-bold mb-1">Antwort B *</label><input id="up-opt-1" required type="text" class="w-full text-xs p-2 rounded-lg border border-slate-300 dark:border-slate-700 bg-slate-50 dark:bg-slate-800" /></div>
+            <div><label class="block text-xs font-bold mb-1">Antwort C *</label><input id="up-opt-2" required type="text" class="w-full text-xs p-2 rounded-lg border border-slate-300 dark:border-slate-700 bg-slate-50 dark:bg-slate-800" /></div>
+            <div><label class="block text-xs font-bold mb-1">Antwort D *</label><input id="up-opt-3" required type="text" class="w-full text-xs p-2 rounded-lg border border-slate-300 dark:border-slate-700 bg-slate-50 dark:bg-slate-800" /></div>
+          </div>
+
+          <div class="grid sm:grid-cols-2 gap-4">
+            <div>
+              <label class="block text-xs font-bold mb-1">Richtige Antwort *</label>
+              <select id="up-correct" class="w-full text-xs p-2.5 rounded-lg border border-slate-300 dark:border-slate-700 bg-slate-50 dark:bg-slate-800">
+                <option value="0">Antwort A</option><option value="1">Antwort B</option><option value="2">Antwort C</option><option value="3">Antwort D</option>
+              </select>
+            </div>
+            <div>
+              <label class="block text-xs font-bold mb-1">Fachliteratur</label>
+              <select id="up-lit-select" class="w-full text-xs p-2.5 rounded-lg border border-slate-300 dark:border-slate-700 bg-slate-50 dark:bg-slate-800"></select>
+            </div>
+          </div>
+
+          <div class="grid md:grid-cols-2 gap-4 pt-2">
+            <div class="p-3 rounded-xl bg-emerald-50/60 dark:bg-emerald-950/20 border border-emerald-200 space-y-2">
+              <div class="text-xs font-extrabold text-emerald-700">RettSan-Erklärung (Basis)</div>
+              <textarea id="up-rs-criteria" required rows="2" placeholder="Blickdiagnose..." class="w-full text-xs p-2 rounded border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900"></textarea>
+              <textarea id="up-rs-patho" required rows="2" placeholder="Pathophysiologie..." class="w-full text-xs p-2 rounded border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900"></textarea>
+              <textarea id="up-rs-ems" required rows="2" placeholder="Maßnahmen..." class="w-full text-xs p-2 rounded border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900"></textarea>
+            </div>
+            <div class="p-3 rounded-xl bg-red-50/60 dark:bg-red-950/20 border border-red-200 space-y-2">
+              <div class="text-xs font-extrabold text-stolbergred">NotSan-Erklärung (Vertieft)</div>
+              <textarea id="up-notsan-criteria" required rows="2" placeholder="Vertiefte Kriterien..." class="w-full text-xs p-2 rounded border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900"></textarea>
+              <textarea id="up-notsan-patho" required rows="2" placeholder="Elektrophysiologie..." class="w-full text-xs p-2 rounded border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900"></textarea>
+              <textarea id="up-notsan-ems" required rows="2" placeholder="SAA / BPR Sonderspezifische Therapie..." class="w-full text-xs p-2 rounded border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900"></textarea>
+            </div>
+          </div>
+
+          <button type="submit" id="btn-submit-ekg" class="w-full py-3 rounded-xl bg-stolbergred hover:bg-red-700 text-white font-bold text-sm shadow-md">EKG speichern & freischalten</button>
+        </form>
+
+        <!-- TAB 2: LITERATUR -->
+        <div id="admin-tab-literature" class="hidden space-y-4">
+          <form onsubmit="addLiteratureEntry(event)" class="p-4 rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-200 space-y-3">
+            <h4 class="text-xs font-bold uppercase">Fachquelle / Leitlinie hinterlegen</h4>
+            <div class="grid sm:grid-cols-2 gap-3">
+              <input id="lit-title" required type="text" placeholder="Titel (z.B. ESC Arrhythmias 2024)" class="text-xs p-2 rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900" />
+              <input id="lit-link" type="url" placeholder="Link (optional)" class="text-xs p-2 rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900" />
+            </div>
+            <textarea id="lit-notes" required rows="2" placeholder="Kernaussage..." class="w-full text-xs p-2 rounded border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900"></textarea>
+            <button type="submit" class="px-4 py-2 rounded-lg bg-slate-900 dark:bg-white text-white dark:text-slate-900 text-xs font-bold">+ Speichern</button>
+          </form>
+          <div id="admin-literature-list" class="space-y-2"></div>
+        </div>
+
+      </div>
+    </div>
+  </div>
+
+  <!-- MODAL: CLOUD CONFIG -->
+  <div id="modal-cloud" class="hidden fixed inset-0 z-50 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4">
+    <div class="bg-white dark:bg-slate-900 rounded-2xl max-w-2xl w-full p-6 border border-slate-200 dark:border-slate-800 space-y-4">
+      <div class="flex items-center justify-between">
+        <h3 class="font-extrabold text-lg">Supabase Cloud verbinden</h3>
+        <button onclick="closeModal('modal-cloud')" class="text-slate-400 text-xl">✕</button>
+      </div>
+      <div class="space-y-3">
+        <div><label class="block text-xs font-bold mb-1">Supabase Project URL</label><input id="input-sb-url" type="text" class="w-full text-xs font-mono-tech p-2.5 rounded-lg border border-slate-300 dark:border-slate-700 bg-slate-50 dark:bg-slate-800" /></div>
+        <div><label class="block text-xs font-bold mb-1">Supabase Anon Public Key</label><input id="input-sb-key" type="text" class="w-full text-xs font-mono-tech p-2.5 rounded-lg border border-slate-300 dark:border-slate-700 bg-slate-50 dark:bg-slate-800" /></div>
+        <div class="flex gap-2">
+          <button onclick="saveSupabaseConfig()" class="px-4 py-2 rounded-lg bg-stolbergred text-white text-xs font-bold">Speichern & Verbinden</button>
+          <button onclick="clearSupabaseConfig()" class="px-4 py-2 rounded-lg border border-slate-300 text-xs font-medium">Trennen</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- MODAL: HOSTING -->
+  <div id="modal-hosting" class="hidden fixed inset-0 z-50 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4">
+    <div class="bg-white dark:bg-slate-900 rounded-2xl max-w-xl w-full p-6 border border-slate-200 dark:border-
