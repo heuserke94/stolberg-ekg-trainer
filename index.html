@@ -264,3 +264,1078 @@
           <a id="btn-live-pubmed" href="#" target="_blank" rel="noopener noreferrer" class="text-xs font-semibold px-3 py-1.5 rounded-lg bg-white dark:bg-slate-800 border border-blue-300 text-blue-700 hover:bg-blue-50 transition">
             🔍 Leitlinien / PubMed prüfen ↗
           </a>
+        </div>
+
+        <div class="flex justify-end">
+          <button onclick="nextQuestion()" class="px-6 py-3 rounded-xl bg-slate-900 dark:bg-white text-white dark:text-slate-900 font-bold text-sm hover:opacity-90 transition">Nächstes EKG →</button>
+        </div>
+      </div>
+    </section>
+
+    <!-- VIEW 3: SUMMARY -->
+    <section id="view-summary" class="hidden max-w-2xl mx-auto bg-white dark:bg-slate-900 rounded-2xl p-8 border border-slate-200 dark:border-slate-800 text-center space-y-6">
+      <div class="w-16 h-16 rounded-2xl bg-red-100 dark:bg-red-950 text-stolbergred mx-auto flex items-center justify-center text-3xl font-extrabold">✓</div>
+      <div>
+        <h2 class="text-2xl font-extrabold">Trainingseinheit abgeschlossen!</h2>
+        <p id="summary-text" class="text-slate-600 dark:text-slate-400 mt-2"></p>
+      </div>
+      <div id="summary-stats" class="grid grid-cols-3 gap-4 py-4 border-y border-slate-200 dark:border-slate-800"></div>
+      <div class="flex flex-wrap justify-center gap-3">
+        <button id="btn-retry-wrong" onclick="retryWrongCases()" class="hidden px-5 py-2.5 rounded-xl bg-amber-500 hover:bg-amber-600 text-white font-bold text-sm">Falsche Fälle wiederholen</button>
+        <button onclick="goHome()" class="px-5 py-2.5 rounded-xl bg-slate-900 dark:bg-white text-white dark:text-slate-900 font-bold text-sm">Zurück zur Level-Auswahl</button>
+      </div>
+    </section>
+  </main>
+
+  <!-- MODAL: ADMIN DASHBOARD (SECURED WITH SUPABASE AUTH) -->
+  <div id="modal-admin" class="hidden fixed inset-0 z-50 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4">
+    <div class="bg-white dark:bg-slate-900 rounded-2xl max-w-4xl w-full p-6 border border-slate-200 dark:border-slate-800 max-h-[92vh] overflow-y-auto space-y-5">
+      
+      <!-- Login Gate (Supabase Auth) -->
+      <div id="admin-login-gate" class="space-y-4 py-6 max-w-md mx-auto text-center">
+        <div class="w-12 h-12 rounded-full bg-stolbergred/10 text-stolbergred mx-auto flex items-center justify-center font-bold text-xl">🔒</div>
+        <h3 class="font-extrabold text-xl">Admin-Dashboard (Supabase Auth)</h3>
+        <p class="text-xs text-slate-500">Bitte melde dich mit deinem Administrator-Konto an, um geschützte EKG-Fälle und Fachliteratur zu verwalten.</p>
+        <form onsubmit="handleAdminLogin(event)" class="space-y-3 text-left">
+          <div>
+            <label class="block text-xs font-bold mb-1">Administrator E-Mail</label>
+            <input id="admin-email" required type="email" placeholder="admin@feuerwehr-stolberg.de" class="w-full text-xs p-3 rounded-lg border border-slate-300 dark:border-slate-700 bg-slate-50 dark:bg-slate-800" />
+          </div>
+          <div>
+            <label class="block text-xs font-bold mb-1">Passwort</label>
+            <input id="admin-password" required type="password" placeholder="••••••••••••" class="w-full text-xs p-3 rounded-lg border border-slate-300 dark:border-slate-700 bg-slate-50 dark:bg-slate-800" />
+          </div>
+          <div class="flex gap-2 pt-2">
+            <button type="submit" id="btn-login-submit" class="flex-1 py-3 rounded-lg bg-stolbergred text-white text-xs font-bold hover:bg-red-700 transition">Sicher einloggen</button>
+            <button type="button" onclick="closeModal('modal-admin')" class="px-4 py-3 rounded-lg border border-slate-300 dark:border-slate-700 text-xs font-medium">Abbrechen</button>
+          </div>
+        </form>
+      </div>
+
+      <!-- Admin Dashboard Content (Only visible when authenticated) -->
+      <div id="admin-dashboard-content" class="hidden space-y-5">
+        <div class="flex items-center justify-between border-b border-slate-200 dark:border-slate-800 pb-3">
+          <div class="flex items-center gap-3">
+            <h3 class="font-extrabold text-lg">Feuerwehr Stolberg – Admin Dashboard</h3>
+            <span class="text-xs px-2.5 py-0.5 rounded-full bg-emerald-100 text-emerald-800 font-semibold">Authentifiziert</span>
+          </div>
+          <div class="flex items-center gap-2">
+            <button onclick="handleAdminLogout()" class="text-xs font-semibold px-3 py-1.5 rounded-lg bg-slate-100 dark:bg-slate-800 hover:bg-slate-200">Abmelden</button>
+            <button onclick="closeModal('modal-admin')" class="text-slate-400 hover:text-slate-600 text-xl">✕</button>
+          </div>
+        </div>
+
+        <div class="flex gap-2 border-b border-slate-200 dark:border-slate-800 pb-2">
+          <button onclick="switchAdminTab('upload')" id="admin-tab-btn-upload" class="text-xs font-bold px-4 py-2 rounded-lg bg-stolbergred text-white">1. EKG / Exote einpflegen</button>
+          <button onclick="switchAdminTab('literature')" id="admin-tab-btn-literature" class="text-xs font-bold px-4 py-2 rounded-lg bg-slate-100 dark:bg-slate-800">2. Fachliteratur</button>
+        </div>
+
+        <!-- TAB 1: EKG UPLOAD -->
+        <form id="admin-tab-upload" onsubmit="handleNewEkgSubmit(event)" class="space-y-4">
+          <div class="grid sm:grid-cols-2 gap-4">
+            <div>
+              <label class="block text-xs font-bold mb-1">Ziel-Level *</label>
+              <select id="up-level" required class="w-full text-xs p-2.5 rounded-lg border border-slate-300 dark:border-slate-700 bg-slate-50 dark:bg-slate-800">
+                <option value="RS">Level 1 – RettSan (Basis)</option>
+                <option value="NotSan">Level 2 – NotSan & Exoten (Vertieft)</option>
+              </select>
+            </div>
+            <div>
+              <label class="block text-xs font-bold mb-1">Diagnose / Titel *</label>
+              <input id="up-title" required type="text" placeholder="z.B. Brugada-Syndrom Typ 1" class="w-full text-xs p-2.5 rounded-lg border border-slate-300 dark:border-slate-700 bg-slate-50 dark:bg-slate-800" />
+            </div>
+          </div>
+
+          <div>
+            <label class="block text-xs font-bold mb-1">Klinischer Kontext *</label>
+            <input id="up-context" required type="text" placeholder="z.B. Junger Patient mit familiärer Häufung von plötzlichem Herztod..." class="w-full text-xs p-2.5 rounded-lg border border-slate-300 dark:border-slate-700 bg-slate-50 dark:bg-slate-800" />
+          </div>
+
+          <div class="p-4 rounded-xl border border-dashed border-slate-300 dark:border-slate-700 space-y-3">
+            <div class="flex flex-wrap items-center justify-between gap-2">
+              <div>
+                <label class="block text-xs font-bold">12-Kanal-EKG-Bild (inkl. DSGVO-Schwärzung)</label>
+                <span class="text-[11px] text-slate-500">Maus gedrückt halten zum Schwärzen von Patientendaten.</span>
+              </div>
+              <input type="file" id="up-file" accept="image/*" required onchange="loadImageToRedactCanvas(event)" class="text-xs" />
+            </div>
+            <div id="redact-container" class="hidden space-y-2">
+              <div class="flex items-center justify-between">
+                <span class="text-[11px] font-semibold text-stolbergred">Schwärzungs-Modus aktiv</span>
+                <button type="button" onclick="resetRedactCanvas()" class="text-xs px-2 py-1 rounded bg-slate-200 dark:bg-slate-700">Zurücksetzen</button>
+              </div>
+              <canvas id="redact-canvas" class="max-h-64 w-auto border border-slate-400 rounded cursor-crosshair"></canvas>
+            </div>
+          </div>
+
+          <div class="grid sm:grid-cols-2 gap-3">
+            <div><label class="block text-xs font-bold mb-1">Antwort A *</label><input id="up-opt-0" required type="text" class="w-full text-xs p-2 rounded-lg border border-slate-300 dark:border-slate-700 bg-slate-50 dark:bg-slate-800" /></div>
+            <div><label class="block text-xs font-bold mb-1">Antwort B *</label><input id="up-opt-1" required type="text" class="w-full text-xs p-2 rounded-lg border border-slate-300 dark:border-slate-700 bg-slate-50 dark:bg-slate-800" /></div>
+            <div><label class="block text-xs font-bold mb-1">Antwort C *</label><input id="up-opt-2" required type="text" class="w-full text-xs p-2 rounded-lg border border-slate-300 dark:border-slate-700 bg-slate-50 dark:bg-slate-800" /></div>
+            <div><label class="block text-xs font-bold mb-1">Antwort D *</label><input id="up-opt-3" required type="text" class="w-full text-xs p-2 rounded-lg border border-slate-300 dark:border-slate-700 bg-slate-50 dark:bg-slate-800" /></div>
+          </div>
+
+          <div class="grid sm:grid-cols-2 gap-4">
+            <div>
+              <label class="block text-xs font-bold mb-1">Richtige Antwort *</label>
+              <select id="up-correct" class="w-full text-xs p-2.5 rounded-lg border border-slate-300 dark:border-slate-700 bg-slate-50 dark:bg-slate-800">
+                <option value="0">Antwort A</option><option value="1">Antwort B</option><option value="2">Antwort C</option><option value="3">Antwort D</option>
+              </select>
+            </div>
+            <div>
+              <label class="block text-xs font-bold mb-1">Fachliteratur</label>
+              <select id="up-lit-select" class="w-full text-xs p-2.5 rounded-lg border border-slate-300 dark:border-slate-700 bg-slate-50 dark:bg-slate-800"></select>
+            </div>
+          </div>
+
+          <div class="grid md:grid-cols-2 gap-4 pt-2">
+            <div class="p-3 rounded-xl bg-emerald-50/60 dark:bg-emerald-950/20 border border-emerald-200 space-y-2">
+              <div class="text-xs font-extrabold text-emerald-700">RettSan-Erklärung (Basis)</div>
+              <textarea id="up-rs-criteria" required rows="2" placeholder="Blickdiagnose..." class="w-full text-xs p-2 rounded border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900"></textarea>
+              <textarea id="up-rs-patho" required rows="2" placeholder="Pathophysiologie..." class="w-full text-xs p-2 rounded border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900"></textarea>
+              <textarea id="up-rs-ems" required rows="2" placeholder="Maßnahmen..." class="w-full text-xs p-2 rounded border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900"></textarea>
+            </div>
+            <div class="p-3 rounded-xl bg-red-50/60 dark:bg-red-950/20 border border-red-200 space-y-2">
+              <div class="text-xs font-extrabold text-stolbergred">NotSan-Erklärung (Vertieft)</div>
+              <textarea id="up-notsan-criteria" required rows="2" placeholder="Vertiefte Kriterien..." class="w-full text-xs p-2 rounded border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900"></textarea>
+              <textarea id="up-notsan-patho" required rows="2" placeholder="Elektrophysiologie..." class="w-full text-xs p-2 rounded border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900"></textarea>
+              <textarea id="up-notsan-ems" required rows="2" placeholder="SAA / BPR Sonderspezifische Therapie..." class="w-full text-xs p-2 rounded border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900"></textarea>
+            </div>
+          </div>
+
+          <button type="submit" id="btn-submit-ekg" class="w-full py-3 rounded-xl bg-stolbergred hover:bg-red-700 text-white font-bold text-sm shadow-md">EKG speichern & freischalten</button>
+        </form>
+
+        <!-- TAB 2: LITERATUR -->
+        <div id="admin-tab-literature" class="hidden space-y-4">
+          <form onsubmit="addLiteratureEntry(event)" class="p-4 rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-200 space-y-3">
+            <h4 class="text-xs font-bold uppercase">Fachquelle / Leitlinie hinterlegen</h4>
+            <div class="grid sm:grid-cols-2 gap-3">
+              <input id="lit-title" required type="text" placeholder="Titel (z.B. ESC Arrhythmias 2024)" class="text-xs p-2 rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900" />
+              <input id="lit-link" type="url" placeholder="Link (optional)" class="text-xs p-2 rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900" />
+            </div>
+            <textarea id="lit-notes" required rows="2" placeholder="Kernaussage..." class="w-full text-xs p-2 rounded border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900"></textarea>
+            <button type="submit" class="px-4 py-2 rounded-lg bg-slate-900 dark:bg-white text-white dark:text-slate-900 text-xs font-bold">+ Speichern</button>
+          </form>
+          <div id="admin-literature-list" class="space-y-2"></div>
+        </div>
+
+      </div>
+    </div>
+  </div>
+
+  <!-- MODAL: CLOUD CONFIG -->
+  <div id="modal-cloud" class="hidden fixed inset-0 z-50 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4">
+    <div class="bg-white dark:bg-slate-900 rounded-2xl max-w-2xl w-full p-6 border border-slate-200 dark:border-slate-800 space-y-4">
+      <div class="flex items-center justify-between">
+        <h3 class="font-extrabold text-lg">Supabase Cloud verbinden</h3>
+        <button onclick="closeModal('modal-cloud')" class="text-slate-400 text-xl">✕</button>
+      </div>
+      <div class="space-y-3">
+        <div><label class="block text-xs font-bold mb-1">Supabase Project URL</label><input id="input-sb-url" type="text" class="w-full text-xs font-mono-tech p-2.5 rounded-lg border border-slate-300 dark:border-slate-700 bg-slate-50 dark:bg-slate-800" /></div>
+        <div><label class="block text-xs font-bold mb-1">Supabase Anon Public Key</label><input id="input-sb-key" type="text" class="w-full text-xs font-mono-tech p-2.5 rounded-lg border border-slate-300 dark:border-slate-700 bg-slate-50 dark:bg-slate-800" /></div>
+        <div class="flex gap-2">
+          <button onclick="saveSupabaseConfig()" class="px-4 py-2 rounded-lg bg-stolbergred text-white text-xs font-bold">Speichern & Verbinden</button>
+          <button onclick="clearSupabaseConfig()" class="px-4 py-2 rounded-lg border border-slate-300 text-xs font-medium">Trennen</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- MODAL: HOSTING -->
+  <div id="modal-hosting" class="hidden fixed inset-0 z-50 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4">
+    <div class="bg-white dark:bg-slate-900 rounded-2xl max-w-xl w-full p-6 border border-slate-200 dark:border-slate-800 space-y-4">
+      <div class="flex items-center justify-between">
+        <h3 class="font-extrabold text-lg">Online stellen</h3>
+        <button onclick="closeModal('modal-hosting')" class="text-slate-400 text-xl">✕</button>
+      </div>
+      <ol class="text-xs space-y-3 list-decimal list-inside text-slate-700 dark:text-slate-300">
+        <li>Speichere diese Datei als <strong><code>index.html</code></strong> ab.</li>
+        <li>Lade sie auf <a href="https://app.netlify.com/drop" target="_blank" class="text-blue-600 underline font-semibold">Netlify Drop</a> oder GitHub Pages hoch.</li>
+      </ol>
+      <button onclick="downloadCurrentHtml()" class="w-full py-2.5 rounded-xl bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs">index.html herunterladen</button>
+    </div>
+  </div>
+
+  <script>
+    const DEFAULT_SUPABASE_URL = '';
+    const DEFAULT_SUPABASE_ANON_KEY = '';
+
+    let supabaseClient = null;
+
+    const DEFAULT_LITERATURE = [
+      {
+        id: 'lit-erc-2025',
+        title: 'ERC / GRC Reanimationsleitlinien 2025',
+        link: 'https://www.grc-org.de/wissenschaft/leitlinien',
+        notes: 'Algorithmen für Kammerflimmern, Asystolie und erweiterte Reanimationsmaßnahmen.'
+      },
+      {
+        id: 'lit-esc-exotic',
+        title: 'ESC Guidelines on Ventricular Arrhythmias & Brugada / Wellens',
+        link: 'https://www.escardio.org/Guidelines',
+        notes: 'Diagnostik und Notfallmanagement bei Brugada-Syndrom, Wellens-Zeichen und STEMI-Äquivalenten.'
+      },
+      {
+        id: 'lit-saa-bpr',
+        title: 'Ärztliche Leiter Rettungsdienst Städteregion Aachen – SAA & BPR',
+        link: 'https://www.dbrd.de',
+        notes: 'Regionale Behandlungs- und Medikamentenpfade im Rettungsdienst.'
+      }
+    ];
+
+    const BUILTIN_CASES = [
+      {
+        id: 'rs-1', level: 'RS', type: 'sinus_normal',
+        title: 'Normofrequenter Sinusrhythmus',
+        clinical_context: '34-jähriger Patient nach kurzer Synkope, aktuell wach, beschwerdefrei, RR 125/80 mmHg.',
+        options: ['Normofrequenter Sinusrhythmus', 'Absolutes Vorhofflimmern', 'Kammerflimmern', 'AV-Block III°'],
+        correct_index: 0,
+        rs_criteria: 'Regelmäßige R-Zacken-Abstände (ca. 75/min), positive P-Wellen vor jedem QRS.',
+        rs_patho: 'Regelmäßige Erregung im Sinusknoten.',
+        rs_ems: 'Unauffälliges EKG. Basismonitoring.',
+        notsan_criteria: 'Frequenz 75/min, PQ 160 ms, QRS < 100 ms.',
+        notsan_patho: 'Physiologische Depolarisation.',
+        notsan_ems: 'Ausschluss struktureller Rhythmusstörungen.',
+        literature_source: 'Ärztliche Leiter Rettungsdienst Städteregion Aachen – SAA & BPR',
+        literature_link: 'https://pubmed.ncbi.nlm.nih.gov/?term=normal+12+lead+ECG'
+      },
+      {
+        id: 'rs-2', level: 'RS', type: 'vfib',
+        title: 'Kammerflimmern (VF)',
+        clinical_context: '62-jähriger Patient kollabiert, keine Reaktion, keine normale Atmung.',
+        options: ['Sinustachykardie', 'Kammerflimmern (VF)', 'Asystolie', 'Vorhofflattern'],
+        correct_index: 1,
+        rs_criteria: 'Unregelmäßige Flimmerwellen, keine P-Wellen oder QRS-Komplexe.',
+        rs_patho: 'Unkoordinierte kreisende Erregungen im Kammermyokard.',
+        rs_ems: 'Sofortige Reanimation (30:2) & Defibrillation.',
+        notsan_criteria: 'Grob- bis feinschlägiges Kammerflimmern.',
+        notsan_patho: 'Myokardiale Ischämie mit elektrischer Instabilität.',
+        notsan_ems: 'ERC-ALS-Algorithmus.',
+        literature_source: 'ERC / GRC Reanimationsleitlinien 2025',
+        literature_link: 'https://pubmed.ncbi.nlm.nih.gov/?term=ventricular+fibrillation'
+      },
+      {
+        id: 'rs-3', level: 'RS', type: 'asystole',
+        title: 'Asystolie (Herz-Kreislauf-Stillstand)',
+        clinical_context: '78-jährige Patientin regungslos im Bett vorgefunden. Keine Spontanatmung, kein Puls tastbar.',
+        options: ['Kammerflimmern', 'Asystolie (Nulllinie)', 'Sinusbradykardie', 'PEA'],
+        correct_index: 1,
+        rs_criteria: 'Isoelektrische Nulllinie (eventuell feine Artefakte), keinerlei elektrische Herzaktion erkennbar.',
+        rs_patho: 'Vollständiges Erlöschen jeglicher elektrischer und mechanischer Herzaktivität.',
+        rs_ems: 'Sofortige Reanimation (30:2), Thoraxkompressionen fortführen, Notarzt nachfordern.',
+        notsan_criteria: 'Nachweis der Asystolie in zwei Extremitätenableitungen (Ausschaltung von Ableitungsfehlern).',
+        notsan_patho: 'Endstadium des Kreislaufversagens oder prolongierte Ischämie.',
+        notsan_ems: 'Erweiterte Reanimationsmaßnahmen (ALS), Adrenalin 1 mg alle 3–5 min, reversible Ursachen (4H & 4T) prüfen.',
+        literature_source: 'ERC / GRC Reanimationsleitlinien 2025',
+        literature_link: 'https://pubmed.ncbi.nlm.nih.gov/?term=asystole+cardiac+arrest+guidelines'
+      },
+      {
+        id: 'rs-4', level: 'RS', type: 'afib',
+        title: 'Absolutes Vorhofflimmern',
+        clinical_context: '76-jähriger Patient klagt über plötzliches Herzstolpern und Schwäche. RR 135/85 mmHg.',
+        options: ['Sinusrhythmus', 'Absolutes Vorhofflimmern', 'Ventrikuläre Tachykardie', 'AV-Block I°'],
+        correct_index: 1,
+        rs_criteria: 'Absolut unregelmäßige QRS-Folge (Arrhythmia absoluta), fehlende P-Wellen.',
+        rs_patho: 'Chaotische elektrische Vorhofaktivität ohne effektive Kontraktion.',
+        rs_ems: 'Monitoring, Vitalparameter, 12-Kanal-EKG zur Frequenzkontrolle.',
+        notsan_criteria: 'Irreguläre RR-Intervalle, isoelektrische Flimmerlinie.',
+        notsan_patho: 'Verlust der Vorhofpumpleistung und Thromboembolie-Risiko.',
+        notsan_ems: 'Hämodynamische Stabilität prüfen; bei Instabilität Notarzt-Kardioversion.',
+        literature_source: 'ESC Guidelines on Atrial Fibrillation',
+        literature_link: 'https://pubmed.ncbi.nlm.nih.gov/?term=atrial+fibrillation'
+      },
+      {
+        id: 'rs-5', level: 'RS', type: 'brady',
+        title: 'Ausgeprägte Sinusbradykardie',
+        clinical_context: '50-jähriger Marathonläufer mit Schwindel beim Aufstehen, HF 42/min, RR 110/70 mmHg.',
+        options: ['Sinusbradykardie (HF ca. 42/min)', 'Asystolie', 'AV-Block III°', 'Sinustachykardie'],
+        correct_index: 0,
+        rs_criteria: 'Regelmäßiger Rhythmus mit einer Herzfrequenz unter 50/min, jeder QRS-Komplex hat eine P-Welle.',
+        rs_patho: 'Verlangsamte Erregungsbildung im Sinusknoten (v.a. bei Sportlern oder Vagotonus).',
+        rs_ems: 'Bei Beschwerdefreiheit keine Akuttherapie nötig; bei Schwindel/Hypotonie Monitoring.',
+        notsan_criteria: 'Sinusfrequenz 42/min, physiologischer QRS-Komplex, normale PQ-Zeit.',
+        notsan_patho: 'Vagale Überaktivität oder Medikamenteneinfluss (Betablocker).',
+        notsan_ems: 'Bei symptomatischer Bradykardie: Atropin 0,5–1,0 mg i.v.',
+        literature_source: 'Ärztliche Leiter Rettungsdienst Städteregion Aachen – SAA & BPR',
+        literature_link: 'https://pubmed.ncbi.nlm.nih.gov/?term=sinus+bradycardia'
+      },
+      {
+        id: 'notsan-1', level: 'NotSan', type: 'stemi_anterior',
+        title: 'Akuter Vorderwand-STEMI (V1–V4)',
+        clinical_context: '54-jähriger Patient mit akutem retrosternalem Druck seit 35 Min.',
+        options: ['Vorderwand-STEMI (V1–V4)', 'Benigne Repolarisation', 'Hinterwand-STEMI', 'AV-Block III°'],
+        correct_index: 0,
+        rs_criteria: 'ST-Strecken-Hebungen in V1–V4, I und aVL.',
+        rs_patho: 'Verschluss der linken vorderen Koronararterie (RIVA).',
+        rs_ems: 'Notarztruf, O2 bei Bedarf, Voranmeldung HKL.',
+        notsan_criteria: 'Monophasische ST-Hebungen > 0,2 mV in V2–V4; reziproke Senkungen inferior.',
+        notsan_patho: 'Transmurale Ischämie des linken Ventrikels.',
+        notsan_ems: 'ASS 250 mg, Heparin, Schmerztherapie, Direktverlegung HKL.',
+        literature_source: 'ESC Guidelines on Acute Coronary Syndromes',
+        literature_link: 'https://pubmed.ncbi.nlm.nih.gov/?term=anterior+STEMI'
+      },
+      {
+        id: 'notsan-2', level: 'NotSan', type: 'stemi_inferior',
+        title: 'Akuter Hinterwand-/Inferior-STEMI (II, III, aVF)',
+        clinical_context: '67-jähriger Patient mit Übelkeit, epigastrischem Schmerz und Bradykardie. RR 85/50 mmHg.',
+        options: ['Inferiorer STEMI (II, III, aVF)', 'Vorderwandinfarkt', 'Lungenembolie', 'Hyperkaliämie'],
+        correct_index: 0,
+        rs_criteria: 'ST-Strecken-Hebungen in II, III und aVF.',
+        rs_patho: 'Verschluss der rechten Koronararterie (RCA).',
+        rs_ems: 'Notarzt nachfordern, Vorsicht bei Nitro wegen Blutdruckabfall.',
+        notsan_criteria: 'ST-Hebungen in II, III, aVF (III > II), reziproke Senkungen in I und aVL. V4R ableiten!',
+        notsan_patho: 'Beteiligung des rechten Ventrikels (RV-Infarkt) mit Vorlastabfall.',
+        notsan_ems: 'Volumengabe bei Hypotonie, kein Nitro, ASS + Heparin, Notfall-PCI.',
+        literature_source: 'ESC Guidelines on Acute Coronary Syndromes',
+        literature_link: 'https://pubmed.ncbi.nlm.nih.gov/?term=inferior+STEMI'
+      },
+      {
+        id: 'notsan-3', level: 'NotSan', type: 'av_block_3',
+        title: 'AV-Block III° (Totaler AV-Block)',
+        clinical_context: '81-jähriger Patient nach Synkope. HF 34/min, blass, kaltschweißig.',
+        options: ['AV-Block III° (vollständige AV-Dissoziation)', 'Sinusbradykardie', 'AV-Block I°', 'Vorhofflattern'],
+        correct_index: 0,
+        rs_criteria: 'Sehr langsamer, regelmäßiger Kammerrhythmus, P-Wellen entkoppelt.',
+        rs_patho: 'Vollständige Leitungsunterbrechung zwischen Vorhof und Kammer.',
+        rs_ems: 'Notarzt, Defi-Pads kleben, Patient flach lagern.',
+        notsan_criteria: 'Unabhängige P-Wellen und QRS-Komplexe, langsamer Ersatzrhythmus.',
+        notsan_patho: 'Infrahissärer Block mit Risiko für Asystolie.',
+        notsan_ems: 'Atropinversuch, transkutanes Pacing, Adrenalinperfusor.',
+        literature_source: 'Ärztliche Leiter Rettungsdienst Städteregion Aachen – SAA & BPR',
+        literature_link: 'https://pubmed.ncbi.nlm.nih.gov/?term=third+degree+AV+block'
+      },
+      {
+        id: 'notsan-4', level: 'NotSan', type: 'vt_mono',
+        title: 'Monomorphe Ventrikuläre Tachykardie (VT)',
+        clinical_context: '69-jähriger Patient mit KHK klagt über Herzrasen. RR 90/55 mmHg, wach.',
+        options: ['Monomorphe VT (Breitkomplextachykardie)', 'Sinustachykardie', 'Vorhofflimmern', 'Asystolie'],
+        correct_index: 0,
+        rs_criteria: 'Sehr schneller (175/min), regelmäßiger Rhythmus mit breiten QRS-Komplexen.',
+        rs_patho: 'Kreisende Erregung im Kammermyokard.',
+        rs_ems: 'Notarzt, Defi-Pads kleben, reanimationsbereit bleiben.',
+        notsan_criteria: 'QRS > 140 ms, AV-Dissoziation, Achsenabweichung.',
+        notsan_patho: 'Stabiles Makro-Reentry in infarziertem Areal.',
+        notsan_ems: 'Bei Instabilität: Kardioversion; bei Stabilität: Amiodaron i.v.',
+        literature_source: 'ERC / GRC Reanimationsleitlinien 2025',
+        literature_link: 'https://pubmed.ncbi.nlm.nih.gov/?term=ventricular+tachycardia'
+      },
+      {
+        id: 'notsan-5', level: 'NotSan', type: 'lbbb',
+        title: 'Kompletter Linksschenkelblock (LSB)',
+        clinical_context: '72-jähriger Patient mit akuter Luftnot und Thoraxdruck. Bekannte KHK.',
+        options: ['Kompletter Linksschenkelblock (LSB)', 'Vorderwandinfarkt', 'Rechtsschenkelblock', 'Normales EKG'],
+        correct_index: 0,
+        rs_criteria: 'Verbreiterter QRS-Komplex (> 120 ms) mit tiefen S-Zacken in V1 und breiten R-Zacken in I, V5, V6.',
+        rs_patho: 'Verzögerte Erregung des linken Ventrikels durch Blockade des linken Tawara-Schenkelastes.',
+        rs_ems: '12-Kanal-EKG, Schmerztherapie, Notarztruf (neuer LSB gilt als STEMI-Äquivalent!).',
+        notsan_criteria: 'QRS ≥ 120 ms, QS oder rS in V1, monomorphes R in I und V6, fehlende Q-Zacken.',
+        notsan_patho: 'Strukturelle Herzerkrankung oder akute Myokardischämie.',
+        notsan_ems: 'Sgarbossa-Kriterien prüfen, HKL-Voranmeldung bei akutem Infarktverdacht.',
+        literature_source: 'ESC Guidelines on Acute Coronary Syndromes',
+        literature_link: 'https://pubmed.ncbi.nlm.nih.gov/?term=left+bundle+branch+block'
+      },
+      {
+        id: 'notsan-6', level: 'NotSan', type: 'hyperkal',
+        title: 'Schwere Hyperkaliämie',
+        clinical_context: '65-jähriger Dialysepatient, Termin am Vortag verpasst. Schwäche, Bradykardie.',
+        options: ['Schwere Hyperkaliämie (zeltförmige T-Wellen)', 'Akuter Infarkt', 'Perikarditis', 'Hypokaliämie'],
+        correct_index: 0,
+        rs_criteria: 'Spitz auslaufende, hohe „zeltförmige“ T-Wellen in den Brustwandableitungen, verwaschene QRS-Komplexe.',
+        rs_patho: 'Gefährliche Erhöhung des Serum-Kaliumspiegels blockiert das Ruhemembranpotential.',
+        rs_ems: 'Notarzt, Monitoring, Vorbereitung auf kardiale Notfälle (Kammerflattern/Asystolie).',
+        notsan_criteria: 'Hohe symmetrische T-Wellen, PQ-Verlängerung, QRS-Verbreiterung bis zur Sinuswelle.',
+        notsan_patho: 'Membraninstabilität des Myokards durch Kaliumüberladung.',
+        notsan_ems: 'Calciumchlorid / Calciumgluconat i.v. als Membranstabilisator, Natriumbicarbonat, Insulin-Glucose-Infusion.',
+        literature_source: 'Ärztliche Leiter Rettungsdienst Städteregion Aachen – SAA & BPR',
+        literature_link: 'https://pubmed.ncbi.nlm.nih.gov/?term=hyperkalemia+ECG'
+      },
+      {
+        id: 'exo-1', level: 'NotSan', type: 'brugada',
+        title: 'Brugada-Syndrom (Typ 1 EKG-Muster)',
+        clinical_context: '28-jähriger Patient, synkopaler Anfall im Schlaf. Familienanamnese positiv für plötzlichen Herztod.',
+        options: ['Brugada-Syndrom (Typ 1 coved ST-Hebung in V1–V3)', 'Hinterwandinfarkt', 'Rechtsherzhypertrophie', 'Linksschenkelblock'],
+        correct_index: 0,
+        rs_criteria: 'Sattelförmige bzw. steil abfallende ST-Hebungen („coved-type“, ≥ 2 mm) in V1–V3, gefolgt von negativer T-Welle.',
+        rs_patho: 'Genetischer Ionenkanaldefekt (SCN5A) mit hohem Risiko für Kammerflimmern.',
+        rs_ems: 'Monitoring, Defi-Pads kleben, Notarzt nachfordern. Fieber senken!',
+        notsan_criteria: 'Typ-1-Brugada-Muster: ST-Hebung ≥ 2 mm mit absteigendem Schenkel in V1–V3.',
+        notsan_patho: 'Repolarisationsstörung im rechtsventrikulären Ausflusshof (RVOT).',
+        notsan_ems: 'Bei VF/VT: Defibrillation. Definitiv: ICD-Implantation.',
+        literature_source: 'ESC Guidelines on Ventricular Arrhythmias & Brugada',
+        literature_link: 'https://pubmed.ncbi.nlm.nih.gov/?term=Brugada+syndrome+ECG'
+      },
+      {
+        id: 'exo-2', level: 'NotSan', type: 'wellens',
+        title: 'Wellens-Syndrom (Typ A – Proximaler RIVA / LAD Stenose)',
+        clinical_context: '51-jähriger Patient mit Angina pectoris im Intervall. Troponin grenzwertig.',
+        options: ['Wellens-Syndrom (T-Inversionen V2–V3 als RIVA-Stenose)', 'Unterwandinfarkt', 'Perikarditis', 'Normales EKG'],
+        correct_index: 0,
+        rs_criteria: 'Tiefe, symmetrische T-Inversionen in Ableitungen V2 und V3 bei normalem QRS.',
+        rs_patho: 'Hochgradige, drohende proximale Stenose des RIVA („Widowmaker“).',
+        rs_ems: 'Absolute Lebensgefahr: Sofortiger Transport ins Herzkatheterlabor.',
+        notsan_criteria: 'Typ A (biphasisch) oder Typ B (tief invers) T-Wellen in V2–V3.',
+        notsan_patho: 'Subokklusion des Ramus interventricularis anterior.',
+        notsan_ems: 'ASS, Heparin, Notfall-PCI vor Troponin-Anstieg.',
+        literature_source: 'ESC Guidelines on Acute Coronary Syndromes',
+        literature_link: 'https://pubmed.ncbi.nlm.nih.gov/?term=Wellens+syndrome'
+      },
+      {
+        id: 'exo-3', level: 'NotSan', type: 's1q3t3',
+        title: 'Akute Lungenembolie (S1Q3T3 / McGinn-White-Zeichen)',
+        clinical_context: '64-jährige Patientin mit plötzlicher Dyspnoe, Tachykardie (115/min), SpO2 84%.',
+        options: ['Akute Lungenembolie (S1Q3T3-Typ)', 'Vorderwandinfarkt', 'Hypokaliämie', 'Vorhofflimmern'],
+        correct_index: 0,
+        rs_criteria: 'Tachykarder Rhythmus mit tiefem S in I, Q in III und negativer T-Welle in III (S1Q3T3).',
+        rs_patho: 'Akute Druckerhöhung im kleinen Kreislauf (Cor pulmonale acutum).',
+        rs_ems: 'Notarzt, O2-Gabe, schonender Transport, Oberkörperhochlagerung.',
+        notsan_criteria: 'S1Q3T3-Phänomen, Rechtsschenkelblock (RSR in V1), T-Negativierung in V1–V3.',
+        notsan_patho: 'Akute Rechtsherzbelastung und Dilatation des rechten Ventrikels.',
+        notsan_ems: 'High-Flow O2, Volumengestaltung extrem zurückhaltend, Notarzt-Indikation.',
+        literature_source: 'ESC Guidelines on Acute Pulmonary Embolism',
+        literature_link: 'https://pubmed.ncbi.nlm.nih.gov/?term=pulmonary+embolism+S1Q3T3'
+      }
+    ];
+
+    let allCases = [];
+    let literatureList = [];
+    let currentQuizCases = [];
+    let currentCaseIndex = 0;
+    let currentLevel = 'RS';
+    let currentExplanationDepth = 'RS';
+    let score = 0;
+    let wrongCases = [];
+    let answeredCurrent = false;
+
+    let redactImg = null;
+    let isDraggingRedact = false;
+    let redactStartX = 0, redactStartY = 0;
+    let redactRects = [];
+
+    window.addEventListener('DOMContentLoaded', async () => {
+      initDarkMode();
+      loadLiterature();
+      try {
+        await initSupabaseFromStorage();
+      } catch (e) {
+        console.warn("Supabase init skipped/offline", e);
+      }
+      try {
+        await refreshAllCases();
+      } catch (e) {
+        console.error("Error refreshing cases, using builtin fallback", e);
+        allCases = BUILTIN_CASES.map(c => ({ ...c, isBuiltin: true }));
+        updateCaseCounts();
+      }
+      initDraggableRuler();
+    });
+
+    function initDarkMode() {
+      const savedTheme = localStorage.getItem('ekg_theme');
+      if (savedTheme === 'dark' || (!savedTheme && window.matchMedia('(prefers-color-scheme: dark)').matches)) {
+        document.documentElement.classList.add('dark');
+      }
+    }
+
+    function toggleDarkMode() {
+      document.documentElement.classList.toggle('dark');
+      const isDark = document.documentElement.classList.contains('dark');
+      localStorage.setItem('ekg_theme', isDark ? 'dark' : 'light');
+      if (!document.getElementById('view-quiz').classList.contains('hidden')) {
+        const currentCase = currentQuizCases[currentCaseIndex];
+        if (currentCase && !currentCase.image_url) {
+          draw12LeadEkg(currentCase.type);
+        }
+      }
+    }
+
+    async function initSupabaseFromStorage() {
+      const url = localStorage.getItem('sb_url') || DEFAULT_SUPABASE_URL;
+      const key = localStorage.getItem('sb_key') || DEFAULT_SUPABASE_ANON_KEY;
+      document.getElementById('input-sb-url').value = url;
+      document.getElementById('input-sb-key').value = key;
+
+      if (url && key && window.supabase) {
+        try {
+          supabaseClient = window.supabase.createClient(url, key);
+          document.getElementById('cloud-dot').className = 'w-2 h-2 rounded-full bg-emerald-500';
+          document.getElementById('cloud-label').textContent = 'Cloud aktiv (Stolberg)';
+        } catch (err) { console.error(err); }
+      }
+    }
+
+    async function saveSupabaseConfig() {
+      const url = document.getElementById('input-sb-url').value.trim();
+      const key = document.getElementById('input-sb-key').value.trim();
+      if (!url || !key) return alert('Bitte URL und Anon Key eingeben.');
+      localStorage.setItem('sb_url', url);
+      localStorage.setItem('sb_key', key);
+      await initSupabaseFromStorage();
+      await refreshAllCases();
+      closeModal('modal-cloud');
+    }
+
+    function clearSupabaseConfig() {
+      localStorage.removeItem('sb_url');
+      localStorage.removeItem('sb_key');
+      supabaseClient = null;
+      document.getElementById('cloud-dot').className = 'w-2 h-2 rounded-full bg-amber-500';
+      document.getElementById('cloud-label').textContent = 'Offline-Modus';
+      refreshAllCases();
+    }
+
+    async function openAdminModal() {
+      if (!supabaseClient) {
+        alert('Bitte verbinde zuerst oben rechts die Supabase Cloud, um die Authentifizierung zu nutzen.');
+        openModal('modal-cloud');
+        return;
+      }
+
+      openModal('modal-admin');
+      
+      try {
+        const { data: { session } } = await supabaseClient.auth.getSession();
+        if (session) {
+          showAdminDashboard();
+        } else {
+          showAdminLoginGate();
+        }
+      } catch (err) {
+        showAdminLoginGate();
+      }
+    }
+
+    function showAdminLoginGate() {
+      document.getElementById('admin-login-gate').classList.remove('hidden');
+      document.getElementById('admin-dashboard-content').classList.add('hidden');
+    }
+
+    function showAdminDashboard() {
+      document.getElementById('admin-login-gate').classList.add('hidden');
+      document.getElementById('admin-dashboard-content').classList.remove('hidden');
+    }
+
+    async function handleAdminLogin(e) {
+      e.preventDefault();
+      const email = document.getElementById('admin-email').value.trim();
+      const password = document.getElementById('admin-password').value;
+      const btn = document.getElementById('btn-login-submit');
+
+      btn.disabled = true; btn.textContent = 'Authentifiziere...';
+
+      try {
+        const { data, error } = await supabaseClient.auth.signInWithPassword({ email, password });
+        if (error) throw error;
+        showAdminDashboard();
+      } catch (err) {
+        alert('Anmeldung fehlgeschlagen: ' + err.message);
+      } finally {
+        btn.disabled = false; btn.textContent = 'Sicher einloggen';
+      }
+    }
+
+    async function handleAdminLogout() {
+      if (supabaseClient) {
+        await supabaseClient.auth.signOut();
+      }
+      showAdminLoginGate();
+    }
+
+    async function refreshAllCases() {
+      const localCustom = JSON.parse(localStorage.getItem('ekg_custom_cases') || '[]');
+      let cloudCases = [];
+      if (supabaseClient) {
+        try {
+          const { data, error } = await supabaseClient.from('ekg_cases').select('*').order('created_at', { ascending: false });
+          if (!error && data) cloudCases = data.map(c => ({ ...c, isCloud: true }));
+        } catch (e) {
+          console.warn("Could not fetch from cloud table", e);
+        }
+      }
+      allCases = [...cloudCases, ...localCustom.map(c => ({ ...c, isLocalCustom: true })), ...BUILTIN_CASES.map(c => ({ ...c, isBuiltin: true }))];
+      updateCaseCounts();
+    }
+
+    function getFilteredCasesBySource() {
+      const source = document.getElementById('source-filter').value;
+      if (source === 'builtin') return allCases.filter(c => c.isBuiltin);
+      if (source === 'cloud') return allCases.filter(c => c.isCloud || c.isLocalCustom);
+      return allCases;
+    }
+
+    function updateCaseCounts() {
+      const filtered = getFilteredCasesBySource();
+      const rsCount = filtered.filter(c => c.level === 'RS').length;
+      const notsanCount = filtered.filter(c => c.level === 'NotSan').length;
+      const elRs = document.getElementById('count-rs');
+      const elNotsan = document.getElementById('count-notsan');
+      if (elRs) elRs.textContent = `${rsCount} Fälle`;
+      if (elNotsan) elNotsan.textContent = `${notsanCount} Fälle (inkl. Exoten)`;
+    }
+
+    function loadLiterature() {
+      const saved = JSON.parse(localStorage.getItem('ekg_literature') || 'null');
+      literatureList = saved && saved.length ? saved : [...DEFAULT_LITERATURE];
+      renderLiteratureUI();
+    }
+
+    function renderLiteratureUI() {
+      const homeContainer = document.getElementById('home-literature-list');
+      const adminContainer = document.getElementById('admin-literature-list');
+      const selectEl = document.getElementById('up-lit-select');
+      if (!homeContainer || !adminContainer || !selectEl) return;
+      homeContainer.innerHTML = ''; adminContainer.innerHTML = ''; selectEl.innerHTML = '';
+
+      literatureList.forEach((lit, idx) => {
+        homeContainer.innerHTML += `
+          <div class="p-3 rounded-xl bg-slate-50 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-700 flex flex-col justify-between">
+            <div><div class="text-xs font-bold mb-1">${lit.title}</div><p class="text-[11px] text-slate-500 line-clamp-2">${lit.notes}</p></div>
+            ${lit.link ? `<a href="${lit.link}" target="_blank" class="mt-2 text-[11px] font-semibold text-stolbergred hover:underline">Leitlinie ↗</a>` : ''}
+          </div>
+        `;
+        adminContainer.innerHTML += `
+          <div class="p-3 rounded-lg border border-slate-200 dark:border-slate-700 flex items-start justify-between gap-3">
+            <div><div class="text-xs font-bold">${lit.title}</div><div class="text-[11px] text-slate-500">${lit.notes}</div></div>
+            <button onclick="deleteLiterature(${idx})" class="text-xs text-red-600 hover:underline">Löschen</button>
+          </div>
+        `;
+        const opt = document.createElement('option');
+        opt.value = lit.title; opt.textContent = lit.title;
+        selectEl.appendChild(opt);
+      });
+    }
+
+    function addLiteratureEntry(e) {
+      e.preventDefault();
+      const title = document.getElementById('lit-title').value.trim();
+      const link = document.getElementById('lit-link').value.trim();
+      const notes = document.getElementById('lit-notes').value.trim();
+      literatureList.unshift({ id: 'lit-' + Date.now(), title, link, notes });
+      localStorage.setItem('ekg_literature', JSON.stringify(literatureList));
+      renderLiteratureUI();
+      e.target.reset();
+    }
+
+    function deleteLiterature(idx) {
+      literatureList.splice(idx, 1);
+      localStorage.setItem('ekg_literature', JSON.stringify(literatureList));
+      renderLiteratureUI();
+    }
+
+    function startQuiz(level) {
+      currentLevel = level;
+      currentExplanationDepth = level;
+      const pool = getFilteredCasesBySource().filter(c => c.level === level);
+      if (!pool.length) return alert('Keine Fälle für diese Auswahl vorhanden.');
+
+      currentQuizCases = [...pool].sort(() => Math.random() - 0.5);
+      currentCaseIndex = 0; score = 0; wrongCases = [];
+
+      document.getElementById('view-home').classList.add('hidden');
+      document.getElementById('view-summary').classList.add('hidden');
+      document.getElementById('view-quiz').classList.remove('hidden');
+
+      const badge = document.getElementById('quiz-level-badge');
+      badge.textContent = level === 'RS' ? 'Level 1: RettSan' : 'Level 2: NotSan & Exoten';
+      badge.className = level === 'RS' ? 'text-xs font-bold px-2.5 py-0.5 rounded-full bg-emerald-100 text-emerald-800' : 'text-xs font-bold px-2.5 py-0.5 rounded-full bg-red-100 text-stolbergred';
+
+      renderQuestion();
+    }
+
+    function renderQuestion() {
+      answeredCurrent = false;
+      const item = currentQuizCases[currentCaseIndex];
+
+      document.getElementById('quiz-progress-text').textContent = `Fall ${currentCaseIndex + 1} / ${currentQuizCases.length}`;
+      document.getElementById('quiz-score-badge').textContent = `Punkte: ${score}`;
+      document.getElementById('quiz-clinical-context').textContent = item.clinical_context;
+      document.getElementById('quiz-feedback').classList.add('hidden');
+
+      const canvas = document.getElementById('ekg-canvas');
+      const imgEl = document.getElementById('ekg-uploaded-img');
+      if (item.image_url) {
+        canvas.classList.add('hidden'); imgEl.src = item.image_url; imgEl.classList.remove('hidden');
+      } else {
+        imgEl.classList.add('hidden'); canvas.classList.remove('hidden');
+        draw12LeadEkg(item.type);
+      }
+
+      const optionsContainer = document.getElementById('quiz-options');
+      optionsContainer.innerHTML = '';
+      const letters = ['A', 'B', 'C', 'D'];
+
+      item.options.forEach((optText, idx) => {
+        const btn = document.createElement('button');
+        btn.className = 'option-btn text-left p-4 rounded-xl border-2 border-slate-200 dark:border-slate-700 hover:border-slate-400 transition flex items-center gap-3 font-medium text-sm';
+        btn.innerHTML = `<span class="w-7 h-7 rounded-lg bg-slate-100 dark:bg-slate-800 font-mono-tech font-bold text-xs flex items-center justify-center shrink-0">${letters[idx]}</span><span>${optText}</span>`;
+        btn.onclick = () => selectAnswer(idx);
+        optionsContainer.appendChild(btn);
+      });
+    }
+
+    function selectAnswer(selectedIdx) {
+      if (answeredCurrent) return;
+      answeredCurrent = true;
+
+      const item = currentQuizCases[currentCaseIndex];
+      const isCorrect = selectedIdx === item.correct_index;
+      const buttons = document.querySelectorAll('.option-btn');
+
+      buttons.forEach((btn, idx) => {
+        btn.disabled = true;
+        if (idx === item.correct_index) {
+          btn.classList.add('border-emerald-500', 'bg-emerald-50', 'dark:bg-emerald-950/40', 'text-emerald-900', 'dark:text-emerald-100');
+        } else if (idx === selectedIdx && !isCorrect) {
+          btn.classList.add('border-stolbergred', 'bg-red-50', 'dark:bg-red-950/40', 'text-red-900', 'dark:text-red-100');
+        } else {
+          btn.classList.add('opacity-50');
+        }
+      });
+
+      const fbIcon = document.getElementById('feedback-icon');
+      const fbHead = document.getElementById('feedback-headline');
+      const fbSub = document.getElementById('feedback-subline');
+
+      if (isCorrect) {
+        score++;
+        document.getElementById('quiz-score-badge').textContent = `Punkte: ${score}`;
+        fbIcon.textContent = '✓'; fbIcon.className = 'w-10 h-10 rounded-full flex items-center justify-center font-bold text-lg bg-emerald-100 text-emerald-700';
+        fbHead.textContent = `Richtig: ${item.title}`;
+        fbSub.textContent = `Auswertung (${currentLevel === 'RS' ? 'RettSan' : 'NotSan & Exoten'})`;
+      } else {
+        wrongCases.push(item);
+        fbIcon.textContent = '!'; fbIcon.className = 'w-10 h-10 rounded-full flex items-center justify-center font-bold text-lg bg-red-100 text-stolbergred';
+        fbHead.textContent = `Korrekter Befund: ${item.title}`;
+        fbSub.textContent = `Detaillierte Analyse (oben umschaltbar)`;
+      }
+
+      switchExplanationDepth(currentLevel);
+
+      document.getElementById('exp-literature').textContent = item.literature_source || 'Stolberg SAA & ESC Guidelines';
+      document.getElementById('btn-live-pubmed').href = item.literature_link || 'https://pubmed.ncbi.nlm.nih.gov';
+
+      document.getElementById('quiz-feedback').classList.remove('hidden');
+      document.getElementById('quiz-feedback').scrollIntoView({ behavior: 'smooth' });
+    }
+
+    function switchExplanationDepth(depth) {
+      currentExplanationDepth = depth;
+      const item = currentQuizCases[currentCaseIndex];
+      const btnRs = document.getElementById('tab-depth-rs');
+      const btnNotsan = document.getElementById('tab-depth-notsan');
+
+      if (depth === 'RS') {
+        btnRs.className = 'text-xs font-bold px-3 py-1.5 rounded-lg bg-emerald-600 text-white shadow-sm';
+        btnNotsan.className = 'text-xs font-bold px-3 py-1.5 rounded-lg text-slate-600 dark:text-slate-300';
+        document.getElementById('exp-criteria').textContent = item.rs_criteria || item.notsan_criteria;
+        document.getElementById('exp-patho').textContent = item.rs_patho || item.notsan_patho;
+        document.getElementById('exp-ems').textContent = item.rs_ems || item.notsan_ems;
+      } else {
+        btnNotsan.className = 'text-xs font-bold px-3 py-1.5 rounded-lg bg-stolbergred text-white shadow-sm';
+        btnRs.className = 'text-xs font-bold px-3 py-1.5 rounded-lg text-slate-600 dark:text-slate-300';
+        document.getElementById('exp-criteria').textContent = item.notsan_criteria || item.rs_criteria;
+        document.getElementById('exp-patho').textContent = item.notsan_patho || item.rs_patho;
+        document.getElementById('exp-ems').textContent = item.notsan_ems || item.rs_ems;
+      }
+    }
+
+    function nextQuestion() {
+      currentCaseIndex++;
+      if (currentCaseIndex < currentQuizCases.length) {
+        renderQuestion();
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+      } else { showSummary(); }
+    }
+
+    function showSummary() {
+      document.getElementById('view-quiz').classList.add('hidden');
+      document.getElementById('view-summary').classList.remove('hidden');
+      const total = currentQuizCases.length;
+      const percent = Math.round((score / total) * 100);
+      document.getElementById('summary-text').textContent = `Du hast ${score} von ${total} EKGs im Level korrekt interpretiert.`;
+      document.getElementById('summary-stats').innerHTML = `
+        <div><div class="text-2xl font-extrabold text-emerald-600">${score}</div><div class="text-xs text-slate-500">Richtig</div></div>
+        <div><div class="text-2xl font-extrabold text-stolbergred">${wrongCases.length}</div><div class="text-xs text-slate-500">Falsch</div></div>
+        <div><div class="text-2xl font-extrabold">${percent}%</div><div class="text-xs text-slate-500">Quote</div></div>
+      `;
+      const retryBtn = document.getElementById('btn-retry-wrong');
+      if (wrongCases.length > 0) retryBtn.classList.remove('hidden'); else retryBtn.classList.add('hidden');
+    }
+
+    function retryWrongCases() {
+      currentQuizCases = [...wrongCases]; currentCaseIndex = 0; score = 0; wrongCases = [];
+      document.getElementById('view-summary').classList.add('hidden');
+      document.getElementById('view-quiz').classList.remove('hidden');
+      renderQuestion();
+    }
+
+    function goHome() {
+      document.getElementById('view-quiz').classList.add('hidden');
+      document.getElementById('view-summary').classList.add('hidden');
+      document.getElementById('view-home').classList.remove('hidden');
+      updateCaseCounts();
+    }
+
+    function draw12LeadEkg(type) {
+      const canvas = document.getElementById('ekg-canvas');
+      if (!canvas) return;
+      const ctx = canvas.getContext('2d');
+      const W = canvas.width, H = canvas.height;
+      const isDark = document.documentElement.classList.contains('dark');
+
+      ctx.fillStyle = isDark ? '#181012' : '#fff7f7';
+      ctx.fillRect(0, 0, W, H);
+
+      const smallGrid = 10, bigGrid = 50;
+      ctx.lineWidth = 0.6; ctx.strokeStyle = isDark ? 'rgba(244, 63, 94, 0.14)' : 'rgba(244, 63, 94, 0.22)';
+      ctx.beginPath();
+      for (let x = 0; x <= W; x += smallGrid) { ctx.moveTo(x, 0); ctx.lineTo(x, H); }
+      for (let y = 0; y <= H; y += smallGrid) { ctx.moveTo(0, y); ctx.lineTo(W, y); }
+      ctx.stroke();
+
+      ctx.lineWidth = 1.2; ctx.strokeStyle = isDark ? 'rgba(244, 63, 94, 0.30)' : 'rgba(225, 29, 72, 0.42)';
+      ctx.beginPath();
+      for (let x = 0; x <= W; x += bigGrid) { ctx.moveTo(x, 0); ctx.lineTo(x, H); }
+      for (let y = 0; y <= H; y += bigGrid) { ctx.moveTo(0, y); ctx.lineTo(W, y); }
+      ctx.stroke();
+
+      const midY = H / 2;
+      ctx.lineWidth = 2; ctx.strokeStyle = isDark ? '#475569' : '#94a3b8';
+      ctx.beginPath(); ctx.moveTo(0, midY); ctx.lineTo(W, midY); ctx.stroke();
+
+      ctx.fillStyle = isDark ? '#fca5a5' : '#9f1239';
+      ctx.font = 'bold 11px JetBrains Mono, monospace';
+      ctx.fillText('EXTREMITÄTENABLEITUNGEN (I, II, III, aVR, aVL, aVF)', 14, 18);
+      ctx.fillText('BRUSTWANDABLEITUNGEN (V1–V6)', 14, midY + 18);
+
+      const limbLeads = ['I', 'aVR', 'II', 'aVL', 'III', 'aVF'];
+      const chestLeads = ['V1', 'V4', 'V2', 'V5', 'V3', 'V6'];
+
+      limbLeads.forEach((lead, i) => drawSingleLeadTrace(ctx, lead, type, (i % 2) * (W / 2), 55 + Math.floor(i / 2) * 82, W / 2, isDark));
+      chestLeads.forEach((lead, i) => drawSingleLeadTrace(ctx, lead, type, (i % 2) * (W / 2), midY + 55 + Math.floor(i / 2) * 82, W / 2, isDark));
+    }
+
+    function drawSingleLeadTrace(ctx, lead, type, xStart, yBase, width, isDark) {
+      ctx.fillStyle = isDark ? '#f8fafc' : '#0f172a';
+      ctx.font = 'bold 13px JetBrains Mono, monospace';
+      ctx.fillText(lead, xStart + 14, yBase - 14);
+
+      ctx.strokeStyle = isDark ? '#38bdf8' : '#0f172a';
+      ctx.lineWidth = 1.8;
+      ctx.beginPath();
+      ctx.moveTo(xStart + 10, yBase); ctx.lineTo(xStart + 16, yBase); ctx.lineTo(xStart + 16, yBase - 35); ctx.lineTo(xStart + 26, yBase - 35); ctx.lineTo(xStart + 26, yBase);
+
+      const traceStart = xStart + 32, traceEnd = xStart + width - 12;
+      let polarity = ['aVR', 'V1'].includes(lead) ? -0.8 : 1.0;
+      let stOffset = 0;
+
+      if (type === 'brugada' && ['V1', 'V2', 'V3'].includes(lead)) stOffset = -22;
+      if (type === 'wellens' && ['V2', 'V3'].includes(lead)) stOffset = 14;
+      if (type === 's1q3t3') {
+        if (lead === 'I') polarity = -0.5;
+        if (lead === 'III') { stOffset = 10; polarity = -1.2; }
+      }
+
+      for (let x = traceStart; x <= traceEnd; x += 1.5) {
+        const relX = x - traceStart;
+        let y = yBase;
+        const t = (relX % 200) / 200;
+        if (t > 0.1 && t < 0.2) y -= polarity * Math.sin(((t - 0.1) / 0.1) * Math.PI) * 6;
+        if (t >= 0.3 && t < 0.36) {
+          const q = (t - 0.3) / 0.06;
+          y += polarity * (q < 0.3 ? (q/0.3)*6 : (6 - ((q-0.3)/0.7)*46));
+        }
+        if (t >= 0.36 && t < 0.6) {
+          y += stOffset - Math.sin(((t - 0.36) / 0.24) * Math.PI) * 12 * polarity;
+        }
+        ctx.lineTo(x, y);
+      }
+      ctx.stroke();
+    }
+
+    function toggleRuler() { document.getElementById('ekg-ruler').classList.toggle('hidden'); }
+
+    function initDraggableRuler() {
+      const ruler = document.getElementById('ekg-ruler');
+      if (!ruler) return;
+      let isDragging = false, ox = 0, oy = 0;
+      ruler.addEventListener('pointerdown', e => {
+        if (e.target.tagName === 'BUTTON') return;
+        isDragging = true; ox = e.clientX - ruler.offsetLeft; oy = e.clientY - ruler.offsetTop;
+        ruler.setPointerCapture(e.pointerId);
+      });
+      ruler.addEventListener('pointermove', e => {
+        if (!isDragging) return;
+        ruler.style.left = `${Math.max(0, e.clientX - ox)}px`;
+        ruler.style.top = `${Math.max(0, e.clientY - oy)}px`;
+      });
+      ruler.addEventListener('pointerup', () => isDragging = false);
+    }
+
+    function switchAdminTab(tab) {
+      const up = document.getElementById('admin-tab-upload');
+      const lit = document.getElementById('admin-tab-literature');
+      const btnUp = document.getElementById('admin-tab-btn-upload');
+      const btnLit = document.getElementById('admin-tab-btn-literature');
+      if (!up || !lit) return;
+      if (tab === 'upload') {
+        up.classList.remove('hidden'); lit.classList.add('hidden');
+        btnUp.className = 'text-xs font-bold px-4 py-2 rounded-lg bg-stolbergred text-white';
+        btnLit.className = 'text-xs font-bold px-4 py-2 rounded-lg bg-slate-100 dark:bg-slate-800';
+      } else {
+        up.classList.add('hidden'); lit.classList.remove('hidden');
+        btnLit.className = 'text-xs font-bold px-4 py-2 rounded-lg bg-stolbergred text-white';
+        btnUp.className = 'text-xs font-bold px-4 py-2 rounded-lg bg-slate-100 dark:bg-slate-800';
+      }
+    }
+
+    function loadImageToRedactCanvas(event) {
+      const file = event.target.files[0];
+      if (!file) return;
+      const reader = new FileReader();
+      reader.onload = (e) => {
+        redactImg = new Image();
+        redactImg.onload = () => {
+          redactRects = [];
+          document.getElementById('redact-container').classList.remove('hidden');
+          renderRedactCanvas();
+        };
+        redactImg.src = e.target.result;
+      };
+      reader.readAsDataURL(file);
+    }
+
+    function renderRedactCanvas() {
+      if (!redactImg) return;
+      const canvas = document.getElementById('redact-canvas');
+      if (!canvas) return;
+      const ctx = canvas.getContext('2d');
+      canvas.width = redactImg.width; canvas.height = redactImg.height;
+      ctx.drawImage(redactImg, 0, 0);
+      ctx.fillStyle = '#000000';
+      redactRects.forEach(r => ctx.fillRect(r.x, r.y, r.w, r.h));
+    }
+
+    function resetRedactCanvas() { redactRects = []; renderRedactCanvas(); }
+
+    window.addEventListener('DOMContentLoaded', () => {
+      const canvas = document.getElementById('redact-canvas');
+      if (canvas) {
+        canvas.addEventListener('mousedown', e => {
+          const rect = canvas.getBoundingClientRect();
+          isDraggingRedact = true;
+          redactStartX = (e.clientX - rect.left) * (canvas.width / rect.width);
+          redactStartY = (e.clientY - rect.top) * (canvas.height / rect.height);
+        });
+        canvas.addEventListener('mouseup', e => {
+          if (!isDraggingRedact) return;
+          isDraggingRedact = false;
+          const rect = canvas.getBoundingClientRect();
+          const endX = (e.clientX - rect.left) * (canvas.width / rect.width);
+          const endY = (e.clientY - rect.top) * (canvas.height / rect.height);
+          redactRects.push({ x: redactStartX, y: redactStartY, w: endX - redactStartX, h: endY - redactStartY });
+          renderRedactCanvas();
+        });
+      }
+    });
+
+    async function handleNewEkgSubmit(e) {
+      e.preventDefault();
+      const btn = document.getElementById('btn-submit-ekg');
+      btn.disabled = true; btn.textContent = 'Speichere...';
+      try {
+        const canvas = document.getElementById('redact-canvas');
+        const dataUrl = canvas.toDataURL('png');
+        const selectedLit = document.getElementById('up-lit-select').value;
+        const litObj = literatureList.find(l => l.title === selectedLit);
+
+        const newCase = {
+          level: document.getElementById('up-level').value,
+          title: document.getElementById('up-title').value.trim(),
+          clinical_context: document.getElementById('up-context').value.trim(),
+          options: [
+            document.getElementById('up-opt-0').value.trim(),
+            document.getElementById('up-opt-1').value.trim(),
+            document.getElementById('up-opt-2').value.trim(),
+            document.getElementById('up-opt-3').value.trim()
+          ],
+          correct_index: parseInt(document.getElementById('up-correct').value, 10),
+          rs_criteria: document.getElementById('up-rs-criteria').value.trim(),
+          rs_patho: document.getElementById('up-rs-patho').value.trim(),
+          rs_ems: document.getElementById('up-rs-ems').value.trim(),
+          notsan_criteria: document.getElementById('up-notsan-criteria').value.trim(),
+          notsan_patho: document.getElementById('up-notsan-patho').value.trim(),
+          notsan_ems: document.getElementById('up-notsan-ems').value.trim(),
+          literature_source: selectedLit,
+          literature_link: litObj ? litObj.link : ''
+        };
+
+        if (supabaseClient) {
+          const blob = await (await fetch(dataUrl)).blob();
+          const fileName = `ekg_admin_${Date.now()}.png`;
+          await supabaseClient.storage.from('ekg-bilder').upload(fileName, blob);
+          const { data: pubUrl } = supabaseClient.storage.from('ekg-bilder').getPublicUrl(fileName);
+          newCase.image_url = pubUrl.publicUrl;
+          await supabaseClient.from('ekg_cases').insert([newCase]);
+          alert('EKG in Cloud gespeichert!');
+        } else {
+          newCase.id = 'local-' + Date.now();
+          newCase.image_url = dataUrl;
+          const existing = JSON.parse(localStorage.getItem('ekg_custom_cases') || '[]');
+          existing.unshift(newCase);
+          localStorage.setItem('ekg_custom_cases', JSON.stringify(existing));
+          alert('EKG lokal im Browser gespeichert!');
+        }
+        e.target.reset();
+        document.getElementById('redact-container').classList.add('hidden');
+        await refreshAllCases();
+        closeModal('modal-admin');
+      } catch (err) { alert('Fehler: ' + err.message); }
+      finally { btn.disabled = false; btn.textContent = 'EKG speichern & freischalten'; }
+    }
+
+    function openModal(id) { 
+      const el = document.getElementById(id);
+      if (el) el.classList.remove('hidden'); 
+    }
+    function closeModal(id) { 
+      const el = document.getElementById(id);
+      if (el) el.classList.add('hidden'); 
+    }
+
+    function exportCasesJSON() {
+      const custom = JSON.parse(localStorage.getItem('ekg_custom_cases') || '[]');
+      const blob = new Blob([JSON.stringify({ cases: custom, literature: literatureList }, null, 2)], { type: 'application/json' });
+      const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = `stolberg_ekg_backup.json`; a.click();
+    }
+
+    function importCasesJSON(event) {
+      const file = event.target.files[0];
+      if (!file) return;
+      const reader = new FileReader();
+      reader.onload = async (e) => {
+        try {
+          const parsed = JSON.parse(e.target.result);
+          if (parsed.cases) {
+            const existing = JSON.parse(localStorage.getItem('ekg_custom_cases') || '[]');
+            localStorage.setItem('ekg_custom_cases', JSON.stringify([...parsed.cases, ...existing]));
+          }
+          if (parsed.literature) {
+            literatureList = parsed.literature;
+            localStorage.setItem('ekg_literature', JSON.stringify(literatureList));
+            renderLiteratureUI();
+          }
+          await refreshAllCases();
+          alert('Backup importiert!');
+        } catch (err) { alert('Ungültige Datei.'); }
+      };
+      reader.readAsText(file);
+    }
+
+    function downloadCurrentHtml() {
+      const blob = new Blob(['<!DOCTYPE html>\n' + document.documentElement.outerHTML], { type: 'text/html' });
+      const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = 'index.html'; a.click();
+    }
+  </script>
+</body>
+</html>
